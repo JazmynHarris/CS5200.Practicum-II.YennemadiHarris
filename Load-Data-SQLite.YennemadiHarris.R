@@ -10,7 +10,11 @@ library(RSQLite)
 sqliteDb <- dbConnect(RSQLite::SQLite(), "expenseTracker.sqlite")
 
 # Drop all tables ----------------
-dbExecute(sqliteDb, "DROP TABLE IF EXISTS Transactions")
+tables <- dbListTables(sqliteDb)
+for (table in tables) {
+  dbExecute(sqliteDb, paste("DROP TABLE IF EXISTS", table))
+}
+
 dbExecute(sqliteDb, "DROP TABLE IF EXISTS EmployeeProject")
 dbExecute(sqliteDb, "DROP TABLE IF EXISTS Project")
 dbExecute(sqliteDb, "DROP TABLE IF EXISTS Client")
