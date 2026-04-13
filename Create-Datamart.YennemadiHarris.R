@@ -33,12 +33,14 @@ mart <- dbConnect(MySQL(),
                   port = 3306, 
                   user = "root", 
                   password = "password")
+sqliteDb <- dbConnect(RSQLite::SQLite(), "expenseTracker.sqlite")
 
 
 # Reset MySQL Database ----------------------------------------------------
-
-# TODO: Delete all tables
-
+tables <- dbListTables(mart)
+for (table in tables) {
+  dbExecute(mart, paste("DROP TABLE IF EXISTS", table))
+}
 
 # Create Dimension Tables -------------------------------------------------
 
@@ -46,7 +48,7 @@ mart <- dbConnect(MySQL(),
 dbExecute(mart, "
           CREATE TABLE IF NOT EXISTS DateDim (
           DateDimID INTEGER AUTO_INCREMENT PRIMARY KEY,
-          Date DATE NOT NULL,
+          Date DATE UNIQUE NOT NULL,
           Month INT NOT NULL,
           Quarter INT NOT NULL,
           Year INT NOT NULL)
@@ -62,7 +64,8 @@ dbExecute(mart, "
           ProjectName TEXT NOT NULL,
           ProjectBudget DOUBLE NOT NULL,
           ClientID INTEGER NOT NULL,
-          ClientName TEXT NOT NULL
+          ClientName TEXT NOT NULL,
+          CONSTRAINT UniqueProjClient UNIQUE(ProjectID, ClientID)
           )")
 
 # Category Dimension Table
@@ -70,7 +73,8 @@ dbExecute(mart, "
           CREATE TABLE IF NOT EXISTS CategoryDim
           CategoryDimID INTEGER AUTO_INCREMENT PRIMARY KEY,
           CategoryName TEXT NOT NULL,
-          SubCategoryName TEXT NOT NULL)")
+          SubCategoryName TEXT NOT NULL,
+          CONSTRAINT UniqueCategories UNIQUE(CategoryName, SubCategoryName))")
 
 # TODO: (CATEGORYNAME, SUBCAT NAME UNIQUE)
 
@@ -78,7 +82,7 @@ dbExecute(mart, "
 dbExecute(mart, "
           CREATE TABLE IF NOT EXISTS CurrencyDim
           CurrencyDimID INTEGER AUTO_INCREMENT PRIMARY KEY,
-          CurrencyName TEXT NOT NULL,
+          CurrencyName TEXT UNIQUE NOT NULL,
           USExchangeRate DECIMAL(15,2) NOT NULL)")
 
 
@@ -204,8 +208,10 @@ merge_from_sqlite <- function(sqliteDb, martDb) {
   insert_into_table(martDb, fact_data, "ExpenseFacts")
 }
 
+merge_from_sqlite(sqliteDb, mart)
+
 
 # Disconnect From Database ------------------------------------------------
 
 dbDisconnect(mart)
-
+dbDisconnect(sqliteDb)
