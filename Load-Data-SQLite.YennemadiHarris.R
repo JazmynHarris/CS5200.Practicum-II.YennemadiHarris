@@ -11,9 +11,11 @@ sqliteDb <- dbConnect(RSQLite::SQLite(), "expenseTracker.sqlite")
 
 # Drop all tables ----------------
 tables <- dbListTables(sqliteDb)
+dbExecute(sqliteDb, "PRAGMA foreign_keys = off")
 for (table in tables) {
   dbExecute(sqliteDb, paste("DROP TABLE IF EXISTS", table))
 }
+dbExecute(sqliteDb, "PRAGMA foreign_keys = on")
 
 
 # Creating Schema ----------------
@@ -21,7 +23,7 @@ for (table in tables) {
 dbExecute(sqliteDb, "
   CREATE TABLE IF NOT EXISTS Vendor (
     VendorID INTEGER PRIMARY KEY,
-    VendorName TEXT NOT NULL
+    VendorName VARCHAR(255) NOT NULL
   )
 ")
 
@@ -37,7 +39,7 @@ dbExecute(sqliteDb, "
 dbExecute(sqliteDb, "
   CREATE TABLE IF NOT EXISTS Currency (
    CurrencyID INTEGER PRIMARY KEY,
-   CurrencyName TEXT NOT NULL,
+   CurrencyName VARCHAR(50) NOT NULL,
    USExchangeRate DECIMAL(15,2) NOT NULL
   )
 ")
@@ -46,7 +48,7 @@ dbExecute(sqliteDb, "
 dbExecute(sqliteDb, "
   CREATE TABLE IF NOT EXISTS ExpenseAllocationCategory (
    CategoryID INTEGER PRIMARY KEY,
-   CategoryName TEXT NOT NULL
+   CategoryName VARCHAR(100) NOT NULL
   )
 ")
 
@@ -54,7 +56,7 @@ dbExecute(sqliteDb, "
 dbExecute(sqliteDb, "
   CREATE TABLE IF NOT EXISTS SubCategories (
    SubCategoryID INTEGER PRIMARY KEY,
-   SubCategoryName TEXT NOT NULL,
+   SubCategoryName VARCHAR(100) NOT NULL,
    CategoryID INTEGER NOT NULL,
    FOREIGN KEY (CategoryID) REFERENCES ExpenseAllocationCategory(CategoryID)
   )
@@ -82,7 +84,7 @@ dbExecute(sqliteDb, "
 dbExecute(sqliteDb, "
   CREATE TABLE IF NOT EXISTS Project (
    ProjectID INTEGER PRIMARY KEY,
-   ProjectName TEXT NOT NULL,
+   ProjectName VARCHAR(255) NOT NULL,
    ProjectBudget DOUBLE NOT NULL,
    ClientID INTEGER NOT NULL,
    FOREIGN KEY (ClientID) REFERENCES Client(ClientID)
@@ -317,9 +319,16 @@ load_transactions_from_intake <- function(sqliteDb, intake_folder) {
     
     # Wraps each file insert into single transaction
     dbBegin(sqliteDb)
-    dbExecute(sqliteDb, sql)
-    dbCommit(sqliteDb)
-    cat("Loaded", nrow(df), "transactions from", basename(file), "\n")
+    tryCatch({
+      dbExecute(sqliteDb, sql)
+      dbCommit(sqliteDb)
+      cat("Loaded", nrow(df), "transactions from", basename(file), "\n")
+    }, error = function(e) {
+      dbRollback(martDb)
+      cat("Attempt at loading from", basename(file), "failed", "\n")
+    })
+    
+    
     
     
   }
