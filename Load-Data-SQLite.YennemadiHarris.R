@@ -11,19 +11,11 @@ sqliteDb <- dbConnect(RSQLite::SQLite(), "expenseTracker.sqlite")
 
 # Drop all tables ----------------
 tables <- dbListTables(sqliteDb)
+dbExecute(sqliteDb, "PRAGMA foreign_keys = off")
 for (table in tables) {
   dbExecute(sqliteDb, paste("DROP TABLE IF EXISTS", table))
 }
-
-dbExecute(sqliteDb, "DROP TABLE IF EXISTS EmployeeProject")
-dbExecute(sqliteDb, "DROP TABLE IF EXISTS Project")
-dbExecute(sqliteDb, "DROP TABLE IF EXISTS Client")
-dbExecute(sqliteDb, "DROP TABLE IF EXISTS Employee")
-dbExecute(sqliteDb, "DROP TABLE IF EXISTS SubCategories")
-dbExecute(sqliteDb, "DROP TABLE IF EXISTS ExpenseAllocationCategory")
-dbExecute(sqliteDb, "DROP TABLE IF EXISTS Currency")
-dbExecute(sqliteDb, "DROP TABLE IF EXISTS CreditCardMerchant")
-dbExecute(sqliteDb, "DROP TABLE IF EXISTS Vendor")
+dbExecute(sqliteDb, "PRAGMA foreign_keys = on")
 
 
 # Creating Schema ----------------
@@ -31,7 +23,7 @@ dbExecute(sqliteDb, "DROP TABLE IF EXISTS Vendor")
 dbExecute(sqliteDb, "
   CREATE TABLE IF NOT EXISTS Vendor (
     VendorID INTEGER PRIMARY KEY,
-    VendorName TEXT NOT NULL
+    VendorName VARCHAR(255) NOT NULL
   )
 ")
 
@@ -47,7 +39,8 @@ dbExecute(sqliteDb, "
 dbExecute(sqliteDb, "
   CREATE TABLE IF NOT EXISTS Currency (
    CurrencyID INTEGER PRIMARY KEY,
-   CurrencyName TEXT NOT NULL
+   CurrencyName VARCHAR(50) NOT NULL,
+   USExchangeRate DECIMAL(15,2) NOT NULL
   )
 ")
 
@@ -55,7 +48,7 @@ dbExecute(sqliteDb, "
 dbExecute(sqliteDb, "
   CREATE TABLE IF NOT EXISTS ExpenseAllocationCategory (
    CategoryID INTEGER PRIMARY KEY,
-   CategoryName TEXT NOT NULL
+   CategoryName VARCHAR(100) NOT NULL
   )
 ")
 
@@ -63,7 +56,7 @@ dbExecute(sqliteDb, "
 dbExecute(sqliteDb, "
   CREATE TABLE IF NOT EXISTS SubCategories (
    SubCategoryID INTEGER PRIMARY KEY,
-   SubCategoryName TEXT NOT NULL,
+   SubCategoryName VARCHAR(100) NOT NULL,
    CategoryID INTEGER NOT NULL,
    FOREIGN KEY (CategoryID) REFERENCES ExpenseAllocationCategory(CategoryID)
   )
@@ -91,7 +84,7 @@ dbExecute(sqliteDb, "
 dbExecute(sqliteDb, "
   CREATE TABLE IF NOT EXISTS Project (
    ProjectID INTEGER PRIMARY KEY,
-   ProjectName TEXT NOT NULL,
+   ProjectName VARCHAR(255) NOT NULL,
    ProjectBudget DOUBLE NOT NULL,
    ClientID INTEGER NOT NULL,
    FOREIGN KEY (ClientID) REFERENCES Client(ClientID)
@@ -165,13 +158,13 @@ dbExecute(sqliteDb, "INSERT INTO CreditCardMerchant (CreditCardMerchantID, Credi
 ")
 
 # Currency - Lookup Table
-dbExecute(sqliteDb, "INSERT INTO Currency (CurrencyID, CurrencyName) VALUES
-  (1 , 'USD'),
-  (2 , 'EUR'),
-  (3 , 'GBP'),
-  (4 , 'BRL'),
-  (5 , 'CAD'),
-  (6 , 'AUD')
+dbExecute(sqliteDb, "INSERT INTO Currency (CurrencyID, CurrencyName, USExchangeRate) VALUES
+  (1 , 'USD', 1.00),
+  (2 , 'EUR', 1.17),
+  (3 , 'GBP', 1.34),
+  (4 , 'BRL', 0.20),
+  (5 , 'CAD', 0.72),
+  (6 , 'AUD', 0.70)
 ")
 
 
@@ -326,9 +319,16 @@ load_transactions_from_intake <- function(sqliteDb, intake_folder) {
     
     # Wraps each file insert into single transaction
     dbBegin(sqliteDb)
-    dbExecute(sqliteDb, sql)
-    dbCommit(sqliteDb)
-    cat("Loaded", nrow(df), "transactions from", basename(file), "\n")
+    tryCatch({
+      dbExecute(sqliteDb, sql)
+      dbCommit(sqliteDb)
+      cat("Loaded", nrow(df), "transactions from", basename(file), "\n")
+    }, error = function(e) {
+      dbRollback(martDb)
+      cat("Attempt at loading from", basename(file), "failed", "\n")
+    })
+    
+    
     
     
   }
