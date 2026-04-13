@@ -4,6 +4,8 @@
 # ============================================================
 
 
+if (!require(RSQLite))   install.packages("RSQLite")
+if (!require(mongolite)) install.packages("mongolite")
 library(RSQLite)
 library(mongolite)
 
@@ -41,7 +43,8 @@ build_expense_report <- function(employee, transactions, approver, month, year) 
      WHERE ep.EmployeeID = ", employee$EmployeeID
   ))
   
-  totalAmount <- sum(transactions$Amount)
+  # Convert each transaction amount to USD using exchange rate before summing
+  totalAmount <- sum(transactions$Amount * transactions$USExchangeRate)
   n_projects  <- nrow(projects)
   fraction    <- round(1 / n_projects, 4)
   
@@ -97,10 +100,12 @@ for (i in 1:nrow(employees)) {
     for (year in years) {
       
       transactions <- dbGetQuery(sqliteDb, paste0(
-        "SELECT * FROM Transactions
-         WHERE EmployeeID = ", employee$EmployeeID, "
-         AND strftime('%m', Date) = '", month, "'
-         AND strftime('%Y', Date) = '", year, "'"
+        "SELECT t.*, c.USExchangeRate
+         FROM Transactions t
+         JOIN Currency c ON t.CurrencyID = c.CurrencyID
+         WHERE t.EmployeeID = ", employee$EmployeeID, "
+         AND strftime('%m', t.Date) = '", month, "'
+         AND strftime('%Y', t.Date) = '", year, "'"
       ))
       
       
