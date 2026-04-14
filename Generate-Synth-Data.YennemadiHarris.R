@@ -45,6 +45,12 @@ employees <- list(
 
 # Defining Month List ------------------------------------------------------
 months <- list(
+  list(label = "JUL 2025", start = "2025-07-01", end = "2026-07-31"),
+  list(label = "AUG 2025", start = "2025-08-01", end = "2026-08-31"),
+  list(label = "SEP 2025", start = "2025-09-01", end = "2026-09-30"),
+  list(label = "OCT 2025", start = "2025-10-01", end = "2025-10-31"),
+  list(label = "NOV 2025", start = "2025-11-01", end = "2025-11-30"),
+  list(label = "DEC 2025", start = "2025-12-01", end = "2025-12-31"),
   list(label = "JAN 2026", start = "2026-01-01", end = "2026-01-31"),
   list(label = "FEB 2026", start = "2026-02-01", end = "2026-02-28"),
   list(label = "MAR 2026", start = "2026-03-01", end = "2026-03-31")
