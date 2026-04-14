@@ -21,9 +21,9 @@ library(mongolite)
 #
 #       ClientProject    ---     Expense Facts    ---     Category
 #
-#                               |             |
-#                               |             |
-#                                 Currency
+#                                       |           
+#                                       |             
+#                                   Currency
 # Analytical Queries:
 #     Expense Total and Average per Category (rolled up from all subcategories)
 #       per client per project and per month and per quarter and per year

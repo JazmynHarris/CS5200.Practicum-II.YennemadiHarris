@@ -132,7 +132,7 @@ dbExecute(sqliteDb, "
 # Pre Populating Lookup Tables ---------------
 
 # Vendor - Lookup Table
-dbExecute(sqliteDb, "INSERT INTO Vendor (VendorID, VendorName) VALUES
+dbExecute(sqliteDb, "INSERT IGNORE INTO Vendor (VendorID, VendorName) VALUES
   (1 , 'DELTA AIR LINES'),
   (2 , 'UNITED AIRLINES'),
   (3 , 'MARRIOTT'),
@@ -152,14 +152,14 @@ dbExecute(sqliteDb, "INSERT INTO Vendor (VendorID, VendorName) VALUES
 
 
 # CreditCardMerchant - Lookup Table
-dbExecute(sqliteDb, "INSERT INTO CreditCardMerchant (CreditCardMerchantID, CreditCardMerchantName) VALUES
+dbExecute(sqliteDb, "INSERT IGNORE INTO CreditCardMerchant (CreditCardMerchantID, CreditCardMerchantName) VALUES
   (1 , 'American Express'),
   (2 , 'Chase Sapphire'),
   (3 , 'Citi Platinum')
 ")
 
 # Currency - Lookup Table
-dbExecute(sqliteDb, "INSERT INTO Currency (CurrencyID, CurrencyName, USExchangeRate) VALUES
+dbExecute(sqliteDb, "INSERT IGNORE INTO Currency (CurrencyID, CurrencyName, USExchangeRate) VALUES
   (1 , 'USD', 1.00),
   (2 , 'EUR', 1.17),
   (3 , 'GBP', 1.34),
@@ -170,14 +170,14 @@ dbExecute(sqliteDb, "INSERT INTO Currency (CurrencyID, CurrencyName, USExchangeR
 
 
 # Category - Lookup Table
-dbExecute(sqliteDb, "INSERT INTO ExpenseAllocationCategory (CategoryID, CategoryName) VALUES
+dbExecute(sqliteDb, "INSERT IGNORE INTO ExpenseAllocationCategory (CategoryID, CategoryName) VALUES
   (1 , 'Travel'),
   (2 , 'Lodging'),
   (3 , 'Meals')
 ")
 
 # SubCategories - Lookup Table
-dbExecute(sqliteDb, "INSERT INTO SubCategories ( SubCategoryID, SubCategoryName , CategoryID) VALUES
+dbExecute(sqliteDb, "INSERT IGNORE INTO SubCategories ( SubCategoryID, SubCategoryName , CategoryID) VALUES
   (1 , 'Airfare', 1),
   (2 , 'Hotel', 2),
   (3 , 'Ground Transportation', 1),
@@ -194,7 +194,7 @@ dbExecute(sqliteDb, "INSERT INTO SubCategories ( SubCategoryID, SubCategoryName 
 # Pre Populating Employee, Client, Project and Employee Project Tables ---------------
 
 # Employee
-dbExecute(sqliteDb, "INSERT INTO Employee (EmployeeID, FirstName, lastName ) VALUES
+dbExecute(sqliteDb, "INSERT IGNORE INTO Employee (EmployeeID, FirstName, lastName ) VALUES
   (1 , 'John' , 'Smith'),
   (2 , 'Jane' , 'Doe'),
   (3 , 'Mary' , 'Garcia'),
@@ -208,7 +208,7 @@ dbExecute(sqliteDb, "INSERT INTO Employee (EmployeeID, FirstName, lastName ) VAL
 ")
 
 # Client
-dbExecute(sqliteDb, "INSERT INTO Client (ClientID, Name) VALUES
+dbExecute(sqliteDb, "INSERT IGNORE INTO Client (ClientID, Name) VALUES
   (1, 'BHP Group'),
   (2, 'Rio Tinto'),
   (3, 'Southern Copper Corporation'),
@@ -218,7 +218,7 @@ dbExecute(sqliteDb, "INSERT INTO Client (ClientID, Name) VALUES
 
 
 # Project 
-dbExecute(sqliteDb, "INSERT INTO Project (ProjectID, ProjectName, ProjectBudget, ClientID) VALUES
+dbExecute(sqliteDb, "INSERT IGNORE INTO Project (ProjectID, ProjectName, ProjectBudget, ClientID) VALUES
   (1, 'BHP Site Assessment', 500000, 1),
   (2, 'BHP Compliance Review', 750000, 1),
   (3, 'Rio Tinto Site Assessment', 300000, 2),
@@ -234,7 +234,7 @@ dbExecute(sqliteDb, "INSERT INTO Project (ProjectID, ProjectName, ProjectBudget,
 
 
 # EmployeeProject - Join Table
-dbExecute(sqliteDb, "INSERT INTO EmployeeProject (EmployeeID, ProjectID) VALUES
+dbExecute(sqliteDb, "INSERT IGNORE INTO EmployeeProject (EmployeeID, ProjectID) VALUES
   (1, 1), (1, 3),
   (2, 2), (2, 5),
   (3, 4), (3, 7),
@@ -281,7 +281,7 @@ get_or_insert_id <- function(db, table, id_col, name_col, name_val, extra_cols =
       })
     )
     dbExecute(db, paste0(
-      "INSERT INTO ", table,
+      "INSERT IGNORE INTO ", table,
       " (", paste(all_cols, collapse = ", "), ") VALUES (",
       paste(all_vals, collapse = ", "), ")"
     ))
@@ -353,11 +353,11 @@ load_transactions_from_intake <- function(sqliteDb, intake_folder) {
     }
     
     sql <- paste0(
-      "INSERT INTO Transactions (Date, Amount, Billable, VendorID, CreditCardMerchantID, CurrencyID, EmployeeID, SubCategoryID) VALUES ",
+      "INSERT IGNORE INTO Transactions (Date, Amount, Billable, VendorID, CreditCardMerchantID, CurrencyID, EmployeeID, SubCategoryID) VALUES ",
       paste(values, collapse = ", ")
     )
     
-    # Wraps each file insert into single transaction
+    # Wraps each file INSERT IGNORE INTO single transaction
     dbBegin(sqliteDb)
     tryCatch({
       dbExecute(sqliteDb, sql)
