@@ -121,7 +121,7 @@ for (emp in employees) {
   for (card in emp$cards) {
     for (month in months) {
       synthetic_data <- generate_transactions(30, month$start, month$end, card)
-      filename <- filename <- paste0(emp$lastName, ", ", emp$firstName, " (", card, ") ", month$label, ".csv")
+      filename <- paste0(emp$lastName, ", ", emp$firstName, " (", card, ") ", month$label, ".csv")
       
       write.csv(synthetic_data, paste0("intake/",filename), row.names = FALSE)
     }
