@@ -32,7 +32,7 @@ library(mongolite)
 
 # Connect to MySQL, SQLite and MongoDB --------------------------------------------------------
   DB_CERT <- < CERTIFICATE >
-  
+
   mart <- dbConnect(
     MySQL(),
     user = < user > ,
@@ -331,8 +331,8 @@ library(mongolite)
         p.ProjectID, p.ProjectName, p.ProjectBudget,
         ct.CategoryName, sc.SubCategoryName,
         cu.CurrencyName, cu.USExchangeRate,
-        SUM(ABS(t.Amount) * cu.USExchangeRate) AS TotalAmount,
-        AVG(ABS(t.Amount) * cu.USExchangeRate) AS AverageAmount
+        SUM(ABS(t.Amount)) AS TotalAmount,
+        AVG(ABS(t.Amount)) AS AverageAmount
       FROM Transactions t
       JOIN Employee e ON t.EmployeeID = e.EmployeeID
       JOIN EmployeeProject ep ON e.EmployeeID = ep.EmployeeID

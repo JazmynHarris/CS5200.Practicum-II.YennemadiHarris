@@ -1,0 +1,461 @@
+---
+title: "Facts Table Report"
+authors: Preethi Rajesh Yennemadi, Jazmyn Harris
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+# Setup
+```{r setup, echo = T, eval=T, warning=FALSE, author = "Jazmyn Harris"}
+library(DBI)
+library(RMySQL)
+
+
+DB_CERT <- <CERTIFICATE>
+
+mart <- dbConnect(MySQL(),
+                  user = "avnadmin",
+                  password = <password>,
+                  dbname = "defaultdb",
+                  host = "practicum-i-cs5200-harrisj-jazmynrh12-9958.b.aivencloud.com",
+                  port = 19929,
+                  sslmode = "require",
+                  sslcert = DB_CERT)
+```
+
+# Expense Analysis Report
+
+## Intro
+
+Heracletes Advisors PC is interested in keeping track of the business expenses that they accrued in order to bill clients. Expenses are accumulated from employee transactions that take place during travel for a given project. This expense reporting system allows employees to easily upload the transactions that they have garnered for a given credit card merchant, month, and year. The report system will extract information to produce different expense facts. This report will demonstrate an expense analysis from this reporting system.
+
+\pagebreak
+## Expense Facts Report
+
+*GENERAL TABLE*
+
+```{r efGeneral, echo=T, eval=T, warning=F, author = "Jazmyn Harris"}
+sql <- "
+SELECT *
+FROM ExpenseFacts f
+LIMIT 5"
+
+dbGetQuery(mart, sql)
+```
+
+_Question 1: What are the total amount and average of each transaction spent (in USD) for each client in all time? (sorted by ClientName)_
+
+```{r expenseFacts, echo=T, eval=T, warning=F, author = "Jazmyn Harris"}
+sql <- "
+    SELECT 
+    cp.ClientName,
+    SUM(f.TotalAmount * cu.USExchangeRate) AS TotalSpentUSD,
+    AVG(f.AverageAmount * cu.USExchangeRate) AS AvgTransactionUSD
+    FROM ExpenseFacts f
+    JOIN ClientProjectDim cp ON f.ClientProjectDimID = cp.ClientProjectDimID
+    JOIN CurrencyDim cu ON f.CurrencyDimID = cu.CurrencyDimID
+    GROUP BY cp.ClientName
+    ORDER BY TotalSpentUSD DESC
+    LIMIT 5"
+
+dbGetQuery(mart, sql)
+```
+
+\pagebreak
+### Time-Based
+
+_Question 2: What is the trend of the total and average expense over time (by year and Month?_
+
+```{r timeBased2, echo=T, eval=T, warning=F, author = "Jazmyn Harris"}
+sql <- "
+SELECT 
+    f.Year,
+    d.Month,
+    SUM(f.TotalAmount * cu.USExchangeRate) AS TotalSpentUSD,
+    AVG(f.AverageAmount * cu.USExchangeRate) AS AvgTransactionUSD
+FROM ExpenseFacts f
+JOIN DateDim d ON f.DateDimID = d.DateDimID
+JOIN CurrencyDim cu ON f.CurrencyDimID = cu.CurrencyDimID
+GROUP BY f.Year, d.Month
+ORDER BY f.Year, d.Month
+"
+
+df <- dbGetQuery(mart, sql)
+```
+
+
+*GRAPH*
+```{r timeBased2_plot, echo=T, eval=T, warning=F, author="Jazmyn Harris"}
+# Create a time label (Year-M)
+df$Time <- paste(df$Year, "M", df$Month, sep="")
+df$Time <- factor(df$Time, levels = df$Time)
+
+# Expand right margin
+par(mar = c(5, 4, 4, 10), xpd = TRUE)
+
+# Plot Total and Average on same graph
+plot(
+  x = seq_along(df$Time),
+  y = df$TotalSpentUSD,
+  type = "o",
+  xaxt = "n",
+  xlab = "Time (Year-Month)",
+  ylab = "USD Amount",
+  main = "Expense Trends Over Time"
+)
+
+# Add x-axis labels
+axis(1, at = seq_along(df$Time), labels = df$Time, las = 2)
+
+# Add Average line
+lines(
+  x = seq_along(df$Time),
+  y = df$AvgTransactionUSD,
+  type = "o",
+  lty = 2
+)
+
+# Add legend
+legend(
+  "top",
+  inset = c(-0.25, 0),
+  legend = c("Total Spent (USD)", "Avg Transaction (USD)"),
+  lty = c(1, 2),
+  pch = 1,
+  bty = "n"
+)
+```
+
+\pagebreak
+_Question 3: Which quarter has the highest spending overall across all clients?_
+```{r timeBased3, echo=T, eval=T, warning=F, author = "Jazmyn Harris"}
+sql <- "
+SELECT 
+    f.Year,
+    f.Quarter,
+    SUM(f.TotalAmount * cu.USExchangeRate) AS TotalSpentUSD
+FROM ExpenseFacts f
+JOIN CurrencyDim cu ON f.CurrencyDimID = cu.CurrencyDimID
+GROUP BY f.Year, f.Quarter
+ORDER BY TotalSpentUSD DESC
+LIMIT 1"
+
+dbGetQuery(mart, sql)
+```
+
+\pagebreak
+### Client-Based
+
+_Question 4: Which clients/projects have the highest total spending across all time?_
+```{r efFacts4, echo=T, eval=T, warning=F, author = "Jazmyn Harris"}
+sql <- "
+SELECT 
+    cp.ClientName,
+    cp.ProjectName,
+    SUM(f.TotalAmount * cu.USExchangeRate) AS TotalSpentUSD
+FROM ExpenseFacts f
+JOIN ClientProjectDim cp ON f.ClientProjectDimID = cp.ClientProjectDimID
+JOIN CurrencyDim cu ON f.CurrencyDimID = cu.CurrencyDimID
+GROUP BY cp.ClientName, cp.ProjectName
+ORDER BY TotalSpentUSD DESC
+LIMIT 5"
+
+dbGetQuery(mart, sql)
+```
+
+\pagebreak
+### Category-Based
+
+
+_Question 6: Which expense categories have the highest total spent?_
+
+```{r efFacts6, echo=T, eval=T, warning=F, author = "Jazmyn Harris"}
+sql <- "
+SELECT 
+    cp.ClientName,
+    cp.ProjectName,
+    SUM(f.TotalAmount * cu.USExchangeRate) AS TotalSpentUSD
+FROM ExpenseFacts f
+JOIN ClientProjectDim cp ON f.ClientProjectDimID = cp.ClientProjectDimID
+JOIN CurrencyDim cu ON f.CurrencyDimID = cu.CurrencyDimID
+GROUP BY cp.ClientName, cp.ProjectName
+ORDER BY TotalSpentUSD DESC
+LIMIT 5"
+
+dbGetQuery(mart, sql)
+```
+
+
+_Question 7: What categories dominate spending for each client?_
+```{r efFacts7, echo=T, eval=T, warning=F, author = "Jazmyn Harris"}
+sql <- "
+SELECT *
+FROM (
+    SELECT 
+        cp.ClientName,
+        c.CategoryName,
+        SUM(f.TotalAmount * cu.USExchangeRate) AS TotalSpentUSD,
+        RANK() OVER (
+            PARTITION BY cp.ClientName 
+            ORDER BY SUM(f.TotalAmount * cu.USExchangeRate) DESC
+        ) AS rnk
+    FROM ExpenseFacts f
+    JOIN ClientProjectDim cp ON f.ClientProjectDimID = cp.ClientProjectDimID
+    JOIN CategoryDim c ON f.CategoryDimID = c.CategoryDimID
+    JOIN CurrencyDim cu ON f.CurrencyDimID = cu.CurrencyDimID
+    GROUP BY cp.ClientName, c.CategoryName
+) ranked
+WHERE rnk = 1;"
+
+dbGetQuery(mart, sql)
+```
+
+\pagebreak
+### Currency-Based
+
+
+_Question 8: Which currency has the most transactions?_ 
+```{r efFacts8, echo=T, eval=T, warning=F, author = "Jazmyn Harris"}
+sql <- "
+SELECT 
+    cu.CurrencyName,
+    COUNT(*) AS TransactionCount
+FROM ExpenseFacts f
+JOIN CurrencyDim cu ON f.CurrencyDimID = cu.CurrencyDimID
+GROUP BY cu.CurrencyName
+ORDER BY TransactionCount DESC
+LIMIT 5"
+
+dbGetQuery(mart, sql)
+```
+
+\pagebreak
+## Billable Facts Report
+
+*GENERAL TABLE*
+
+```{r bfGeneral, echo=T, eval=T, warning=F, author="Preethi Yennemadi"}
+sql <- "
+SELECT *
+FROM BillableFacts
+LIMIT 5"
+
+dbGetQuery(mart, sql)
+```
+
+\pagebreak
+_Question 1: What is the total billable vs non-billable amount over time?_
+
+```{r billablefact1, echo=T, eval=T, warning=F, author="Preethi Yennemadi"}
+sql <- "
+SELECT 
+    f.Year,
+    f.Quarter,
+    SUM(f.BillableAmountUSD) AS TotalBillableUSD,
+    SUM(f.NonBillableAmountUSD) AS TotalNonBillableUSD
+FROM BillableFacts f
+GROUP BY f.Year, f.Quarter
+ORDER BY f.Year, f.Quarter"
+
+df <- dbGetQuery(mart, sql)
+df
+```
+
+```{r billablefact1_plot, echo=T, eval=T, warning=F, author="Preethi Yennemadi"}
+# Create time label
+df$Time <- paste(df$Year, "Q", df$Quarter, sep="")
+df$Time <- factor(df$Time, levels = df$Time)
+
+# Expand right margin for legend
+par(mar = c(5, 4, 4, 10), xpd = TRUE)
+
+# Plot Billable
+plot(
+  x = seq_along(df$Time),
+  y = df$TotalBillableUSD,
+  type = "o",
+  xaxt = "n",
+  xlab = "Time (Year-Quarter)",
+  ylab = "USD Amount",
+  main = "Billable vs Non-Billable Amount Over Time"
+)
+
+# X-axis labels
+axis(1, at = seq_along(df$Time), labels = df$Time, las = 2)
+
+# Add Non-Billable line
+lines(
+  x = seq_along(df$Time),
+  y = df$TotalNonBillableUSD,
+  type = "o",
+  lty = 2
+)
+
+# Legend on the right
+legend(
+  "topright",
+  inset = c(-0.25, 0),
+  legend = c("Billable Amount (USD)", "Non-Billable Amount (USD)"),
+  lty = c(1, 2),
+  pch = 1,
+  bty = "n"
+)
+```
+
+\pagebreak
+_Question 2: Which quarter has the highest billable revenue?_
+
+```{r billablefact2, echo=T, eval=T, warning=F, author="Preethi Yennemadi"}
+sql <- "
+SELECT 
+    f.Year,
+    f.Quarter,
+    SUM(f.BillableAmountUSD) AS TotalBillableUSD
+FROM BillableFacts f
+GROUP BY f.Year, f.Quarter
+ORDER BY TotalBillableUSD DESC
+LIMIT 1"
+```
+
+
+_Question 3: Which employees generate the highest billable revenues?_
+
+```{r billablefact3, echo=T, eval=T, warning=F, author="Preethi Yennemadi"}
+sql <- "
+SELECT 
+    e.EmployeeName,
+    SUM(f.BillableAmountUSD) AS TotalBillableUSD
+FROM BillableFacts f
+JOIN EmployeeDim e 
+    ON f.EmployeeDimID = e.EmployeeDimID
+GROUP BY e.EmployeeName
+ORDER BY TotalBillableUSD DESC;"
+```
+
+\pagebreak
+## BudgetVsActual Facts Report
+
+*GENERAL TABLE*
+
+```{r bvaGeneral, echo=T, eval=T, warning=F, author="Preethi Yennemadi"}
+sql <- "
+SELECT *
+FROM BudgetVsActualFacts
+LIMIT 5"
+
+dbGetQuery(mart, sql)
+```
+
+\pagebreak
+_Question 1: Which projects have the worst budget accuracy?_
+
+```{r bvaFacts1, echo=T, eval=T, warning=F, author="Preethi Yennemadi"}
+sql <- "
+SELECT 
+    cp.ProjectName,
+    SUM(f.ProjectBudget) AS TotalBudget,
+    SUM(f.ActualSpendUSD) AS TotalActual,
+    SUM(f.Variance) AS TotalVariance,
+    (SUM(f.Variance) / NULLIF(SUM(f.ProjectBudget), 0)) * 100 AS VariancePercent
+FROM BudgetVsActualFacts f
+JOIN ClientProjectDim cp 
+    ON f.ClientProjectDimID = cp.ClientProjectDimID
+GROUP BY cp.ProjectName
+ORDER BY ABS(VariancePercent) DESC
+LIMIT 5"
+
+dbGetQuery(mart, sql)
+```
+
+\pagebreak
+_Question 2: What is the variance trend year-over-year?_
+
+```{r bvaFacts2, echo=T, eval=T, warning=F, author="Preethi Yennemadi"}
+
+sql <- "
+SELECT 
+    f.Year,
+    SUM(f.ProjectBudget) AS TotalBudget,
+    SUM(f.ActualSpendUSD) AS TotalActual,
+    SUM(f.Variance) AS TotalVariance,
+    (SUM(f.Variance) / NULLIF(SUM(f.ProjectBudget), 0)) * 100 AS VariancePercent
+FROM BudgetVsActualFacts f
+GROUP BY f.Year
+ORDER BY f.Year
+LIMIT 10"
+
+df <-dbGetQuery(mart, sql)
+df
+```
+
+
+*GRAPH*
+```{r bvaFacts2_plot, echo=T, eval=T, warning=F, author="Preethi Yennemadi"}
+# Time label
+df$Time <- paste(df$Year, "Q", df$Quarter, sep="")
+df$Time <- factor(df$Time, levels = df$Time)
+
+# Expand margin for legend
+par(mar = c(5, 4, 4, 10), xpd = TRUE)
+
+# Plot Budget
+plot(
+  x = seq_along(df$Time),
+  y = df$TotalBudget,
+  type = "o",
+  xaxt = "n",
+  xlab = "Time (Year-Quarter)",
+  ylab = "USD Amount",
+  main = "Budget vs Actual Spending Over Time"
+)
+
+# X-axis labels
+axis(1, at = seq_along(df$Time), labels = df$Time, las = 2)
+
+# Add Actual line
+lines(
+  x = seq_along(df$Time),
+  y = df$TotalActual,
+  type = "o",
+  lty = 2
+)
+
+# Legend on the side
+legend(
+  "topright",
+  inset = c(-0.25, 0),
+  legend = c("Budget", "Actual Spend"),
+  lty = c(1, 2),
+  pch = 1,
+  bty = "n"
+)
+```
+
+\pagebreak
+_Question 3: What is the variance trend year and quarter?_
+
+```{r bvaFacts3, echo=T, eval=T, warning=F, author="Preethi Yennemadi"}
+
+sql <- "
+SELECT 
+    f.Year,
+    f.Quarter,
+    SUM(f.ProjectBudget) AS TotalBudget,
+    SUM(f.ActualSpendUSD) AS TotalActual,
+    SUM(f.Variance) AS TotalVariance,
+    (SUM(f.Variance) / NULLIF(SUM(f.ProjectBudget), 0)) * 100 AS VariancePercent
+FROM BudgetVsActualFacts f
+GROUP BY f.Year, f.Quarter
+ORDER BY f.Year, f.Quarter
+LIMIT 5"
+
+dbGetQuery(mart, sql)
+
+```
+
+
+```{r disconnect, echo=T, eval=T, warning=F, author="Jazmyn Harris"}
+dbDisconnect(mart)
+```
+
