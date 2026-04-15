@@ -4,6 +4,8 @@
 # Author : Preethi Rajesh Yennemadi, Jazmyn Harris
 # ============================================================
 
+if (!require(DBI))      install.packages("DBI")
+if (!require(RSQLite))  install.packages("RSQLite")
 library(DBI)
 library(RSQLite)
 

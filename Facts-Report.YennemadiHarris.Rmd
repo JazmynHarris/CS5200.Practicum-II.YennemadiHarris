@@ -1,9 +1,11 @@
 ---
 title: "Facts Table Report"
-authors: Preethi Rajesh Yennemadi, Jazmyn Harris
+author: Preethi Rajesh Yennemadi, Jazmyn Harris
 output:
-  pdf_document: default
+  html_document:
+    df_print: paged
   html_notebook: default
+  pdf_document: default
 ---
 
 # Setup
@@ -82,6 +84,7 @@ ORDER BY f.Year, d.Month
 "
 
 df <- dbGetQuery(mart, sql)
+df
 ```
 
 
@@ -106,7 +109,7 @@ plot(
 )
 
 # Add x-axis labels
-axis(1, at = seq_along(df$Time), labels = df$Time, las = 2)
+axis(1, at = seq_along(df$Time), labels = df$Time, las = 2, cex.axis = 0.7)
 
 # Add Average line
 lines(
@@ -168,27 +171,25 @@ dbGetQuery(mart, sql)
 ### Category-Based
 
 
-_Question 6: Which expense categories have the highest total spent?_
+_Question 5: Which expense categories have the highest total spent?_
 
-```{r efFacts6, echo=T, eval=T, warning=F, author = "Jazmyn Harris"}
+```{r efFacts5, echo=T, eval=T, warning=F, author = "Jazmyn Harris"}
 sql <- "
 SELECT 
-    cp.ClientName,
-    cp.ProjectName,
+    c.CategoryName,
     SUM(f.TotalAmount * cu.USExchangeRate) AS TotalSpentUSD
 FROM ExpenseFacts f
-JOIN ClientProjectDim cp ON f.ClientProjectDimID = cp.ClientProjectDimID
+JOIN CategoryDim c ON f.CategoryDimID = c.CategoryDimID
 JOIN CurrencyDim cu ON f.CurrencyDimID = cu.CurrencyDimID
-GROUP BY cp.ClientName, cp.ProjectName
-ORDER BY TotalSpentUSD DESC
-LIMIT 5"
+GROUP BY c.CategoryName
+ORDER BY TotalSpentUSD DESC"
 
 dbGetQuery(mart, sql)
 ```
 
 
-_Question 7: What categories dominate spending for each client?_
-```{r efFacts7, echo=T, eval=T, warning=F, author = "Jazmyn Harris"}
+_Question 6: What categories dominate spending for each client?_
+```{r efFacts6, echo=T, eval=T, warning=F, author = "Jazmyn Harris"}
 sql <- "
 SELECT *
 FROM (
@@ -215,8 +216,8 @@ dbGetQuery(mart, sql)
 ### Currency-Based
 
 
-_Question 8: Which currency has the most transactions?_ 
-```{r efFacts8, echo=T, eval=T, warning=F, author = "Jazmyn Harris"}
+_Question 7: Which currency has the most transactions?_ 
+```{r efFacts7, echo=T, eval=T, warning=F, author = "Jazmyn Harris"}
 sql <- "
 SELECT 
     cu.CurrencyName,
@@ -282,7 +283,7 @@ plot(
 )
 
 # X-axis labels
-axis(1, at = seq_along(df$Time), labels = df$Time, las = 2)
+axis(1, at = seq_along(df$Time), labels = df$Time, las = 2, cex.axis = 0.7)
 
 # Add Non-Billable line
 lines(
@@ -316,6 +317,8 @@ FROM BillableFacts f
 GROUP BY f.Year, f.Quarter
 ORDER BY TotalBillableUSD DESC
 LIMIT 1"
+
+dbGetQuery(mart, sql) 
 ```
 
 
@@ -331,6 +334,8 @@ JOIN EmployeeDim e
     ON f.EmployeeDimID = e.EmployeeDimID
 GROUP BY e.EmployeeName
 ORDER BY TotalBillableUSD DESC;"
+
+dbGetQuery(mart, sql) 
 ```
 
 \pagebreak
@@ -392,8 +397,11 @@ df
 
 *GRAPH*
 ```{r bvaFacts2_plot, echo=T, eval=T, warning=F, author="Preethi Yennemadi"}
+# preventing scientific notation use
+options(scipen = 999)
+
 # Time label
-df$Time <- paste(df$Year, "Q", df$Quarter, sep="")
+df$Time <- as.character(df$Year)
 df$Time <- factor(df$Time, levels = df$Time)
 
 # Expand margin for legend
@@ -405,10 +413,14 @@ plot(
   y = df$TotalBudget,
   type = "o",
   xaxt = "n",
-  xlab = "Time (Year-Quarter)",
+  yaxt = "n",       
+  xlab = "Year",
   ylab = "USD Amount",
   main = "Budget vs Actual Spending Over Time"
 )
+
+# Y-axis
+axis(2, at = axTicks(2), labels = format(axTicks(2), scientific = FALSE), cex.axis = 0.7)
 
 # X-axis labels
 axis(1, at = seq_along(df$Time), labels = df$Time, las = 2)
